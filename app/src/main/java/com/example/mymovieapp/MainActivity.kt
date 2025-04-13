@@ -1,47 +1,67 @@
 package com.example.mymovieapp
 
+import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.mymovieapp.ui.theme.MyMovieAPPTheme
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.mymovieapp.adapter.MovieAdapter
+import com.example.mymovieapp.databinding.ActivityMainBinding
+import com.example.mymovieapp.room.MovieEntity
+import com.example.mymovieapp.viewModel.MovieViewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+
+    private val viewModel: MovieViewModel by viewModels()
+    private lateinit var adapter: MovieAdapter
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            MyMovieAPPTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        adapter = MovieAdapter(emptyList<MovieEntity>()) { movie: MovieEntity, isChecked: Boolean ->
         }
+        binding.recyclerMovies.layoutManager = LinearLayoutManager(this)
+        binding.recyclerMovies.adapter = adapter
+
+        binding.fabAddMovie.setOnClickListener {
+            startActivity(Intent(this, AddActivity::class.java))
+        }
+
+        viewModel.movies.observe(this, Observer { movies ->
+            if (movies.isNullOrEmpty()) {
+                binding.emptyView.visibility = View.VISIBLE
+                binding.recyclerMovies.visibility = View.GONE
+            } else {
+                binding.emptyView.visibility = View.GONE
+                binding.recyclerMovies.visibility = View.VISIBLE
+                adapter.updateMovies(movies)
+            }
+        })
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    MyMovieAPPTheme {
-        Greeting("Android")
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_delete -> {
+                val ids = adapter.getSelectedIds()
+                if (ids.isNotEmpty()) {
+                    viewModel.deleteMovies(ids)
+                }
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 }
